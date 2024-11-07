@@ -10,7 +10,7 @@ class Timer
 public:
     using TimePoint_Type = std::chrono::time_point<std::chrono::system_clock>;
     Timer() = default;
-    Timer(dpp::cluster& bot, int64_t channel, int64_t intervalSeconds, const std::string& message, const TimePoint_Type& start, const TimePoint_Type& end);
+    Timer(dpp::cluster& bot, dpp::snowflake channel, int64_t intervalSeconds, const std::string& message, const TimePoint_Type& start, const TimePoint_Type& end);
 
     void saveToFile(const std::string& filename);
     void loadFromFile(const std::string& filename);
@@ -20,6 +20,7 @@ public:
     void start();
     void stop();
     
+    static bool IsDatePassed(const TimePoint_Type& time);
     static std::string GetFormattedTime(const TimePoint_Type& time);
     static std::optional<TimePoint_Type> ParseTime(const std::string& time);
 
@@ -31,7 +32,7 @@ private:
 private:
     dpp::timer m_Timer;
     dpp::cluster& m_Bot;
-    int64_t m_Channel = -1;
+    dpp::snowflake m_Channel = 0;
     int64_t m_IntervalSeconds = -1;
     std::string m_Message;
     TimePoint_Type m_Start, m_End;

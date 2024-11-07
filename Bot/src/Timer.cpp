@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iomanip>
 
-Timer::Timer(dpp::cluster& bot, int64_t channel, int64_t intervalSeconds, const std::string& message, const TimePoint_Type& start, const TimePoint_Type& end)
+Timer::Timer(dpp::cluster& bot, dpp::snowflake channel, int64_t intervalSeconds, const std::string& message, const TimePoint_Type& start, const TimePoint_Type& end)
     : m_Bot(bot), m_Channel(channel), m_IntervalSeconds(intervalSeconds), m_Message(message), m_Start(start), m_End(end)
 {
 }
@@ -104,9 +104,7 @@ void Timer::stop()
 
 bool Timer::isOver() const
 {
-    auto now = std::chrono::system_clock::now();
-
-    return now > m_End;
+    return IsDatePassed(m_End);
 }
 
 int64_t Timer::getSecondsToNextInterval() const
@@ -154,6 +152,11 @@ std::string Timer::getParsedMessage() const
     }
 
     return parsedMessage;
+}
+
+bool Timer::IsDatePassed(const TimePoint_Type& time)
+{
+    return std::chrono::system_clock::now() > time;
 }
 
 std::string Timer::GetFormattedTime(const TimePoint_Type& time)
