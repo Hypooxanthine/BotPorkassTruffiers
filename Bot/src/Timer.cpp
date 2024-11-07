@@ -3,8 +3,8 @@
 #include <fstream>
 #include <iomanip>
 
-Timer::Timer(dpp::cluster& bot, dpp::snowflake channel, int64_t intervalSeconds, const std::string& message, const TimePoint_Type& start, const TimePoint_Type& end)
-    : m_Bot(bot), m_Channel(channel), m_IntervalSeconds(intervalSeconds), m_Message(message), m_Start(start), m_End(end)
+Timer::Timer(dpp::cluster& bot, const std::string& timerName, dpp::snowflake channel, int64_t intervalSeconds, const std::string& message, const TimePoint_Type& start, const TimePoint_Type& end)
+    : m_Bot(bot), m_Name(timerName), m_Channel(channel), m_IntervalSeconds(intervalSeconds), m_Message(message), m_Start(start), m_End(end)
 {
 }
 
@@ -69,8 +69,7 @@ void Timer::start()
     }
         
     m_Timer = m_Bot.start_timer([this](const dpp::timer& timer) {
-        m_Bot.message_create(dpp::message(m_Channel, getParsedMessage()));
-        m_Bot.log(dpp::ll_info, "Timer message sent.");
+        sendMessage();
 
         if (isOver())
         {
@@ -86,8 +85,7 @@ void Timer::start()
                     return;
                 }
 
-                m_Bot.message_create(dpp::message(m_Channel, getParsedMessage()));
-                m_Bot.log(dpp::ll_info, "Timer message sent.");
+                sendMessage();
             }, m_IntervalSeconds);
         }
 
@@ -135,11 +133,13 @@ std::string Timer::getParsedMessage() const
     auto secondsLeft = std::chrono::duration_cast<std::chrono::seconds>(remaining).count();
     
     std::unordered_map<std::string, std::string> replacements = {
+        {"{name}", m_Name},
+        {"{interval}", std::to_string(m_IntervalSeconds)},
         {"{start}", GetFormattedTime(m_Start)},
         {"{end}", GetFormattedTime(m_End)},
         {"{rem:days}", std::to_string(secondsLeft / 60 / 60 / 24)},
         {"{rem:hours}", std::to_string(secondsLeft / 60 / 60)},
-        {"{rem:minuts}", std::to_string(std::chrono::duration_cast<std::chrono::minutes>(remaining).count() / 60)},
+        {"{rem:minuts}", std::to_string(secondsLeft / 60)},
         {"{rem:seconds}", std::to_string(secondsLeft)},
     };
 
@@ -152,6 +152,15 @@ std::string Timer::getParsedMessage() const
     }
 
     return parsedMessage;
+}
+
+void Timer::sendMessage()
+{
+    auto msg = getParsedMessage();
+    dpp::embed embed;
+        embed.set_description(msg);
+    m_Bot.message_create(dpp::message(m_Channel, embed));
+    m_Bot.log(dpp::ll_info, "Timer message: " + msg);
 }
 
 bool Timer::IsDatePassed(const TimePoint_Type& time)
@@ -178,7 +187,7 @@ std::optional<Timer::TimePoint_Type> Timer::ParseTime(const std::string& time)
     std::istringstream ss(time);
     ss >> std::get_time(&tm, "%d/%m/%Y %H:%M:%S");
 
-    if (ss.fail())
+    if (ss.bad())
         return std::nullopt;
     else
     {

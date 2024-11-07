@@ -85,7 +85,7 @@ int main()
             int64_t interval = std::get<int64_t>(event.get_parameter("interval"));
             std::string message = std::get<std::string>(event.get_parameter("message"));
 
-            timers.emplace(name, Timer{bot, channel, interval, message, *startTime, *endTime});
+            timers.emplace(name, Timer{bot, name, channel, interval, message, *startTime, *endTime});
             auto& timer = timers.at(name);
 
             timer.onEnd([name, &timers]() {
@@ -105,10 +105,29 @@ int main()
             std::string msg = "Running timers:\n";
             for (const auto& [name, timer] : timers)
             {
-                msg += " - " + name + '\n';
+                msg += "- " + name + ".\n"
+                    "\tStart: " + Timer::GetFormattedTime(timer.getStart()) + "\n"
+                    "\tEnd: " + Timer::GetFormattedTime(timer.getEnd()) + "\n"
+                    "\tInterval: " + std::to_string(timer.getInterval()) + " seconds\n"
+                    "\tMessage: " + timer.getMessage() + "\n";
             }
 
             event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
+        }
+        else if (event.command.get_command_name() == "stop_timer")
+        {
+            std::string name = std::get<std::string>(event.get_parameter("name"));
+
+            if (!timers.contains(name))
+            {
+                event.reply(dpp::message("Error: Timer with name \"" + name + "\" does not exist.").set_flags(dpp::m_ephemeral));
+                return;
+            }
+
+            timers.at(name).stop();
+            timers.erase(name);
+
+            event.reply(dpp::message("Timer with name \"" + name + "\" stopped.").set_flags(dpp::m_ephemeral));
         }
     });
     
@@ -121,14 +140,17 @@ int main()
             bot.global_command_create(dpp::slashcommand("ping", "Ping the bot", bot.me.id));
 
             dpp::slashcommand set_timer("set_timer", "Set a timer", bot.me.id);
-            set_timer.add_option(dpp::command_option(dpp::co_string, "name", "Timer name. Must be unique.", true));
-            set_timer.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
-            set_timer.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", true));
-            set_timer.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", true));
-            set_timer.add_option(dpp::command_option(dpp::co_string, "start", "Start time of the timer in dd/mm/yy hh:mm:ss format. Default: now.", false));
-            set_timer.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: this channel.", false));
+                set_timer.add_option(dpp::command_option(dpp::co_string, "name", "Timer name. Must be unique.", true));
+                set_timer.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
+                set_timer.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", true));
+                set_timer.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", true));
+                set_timer.add_option(dpp::command_option(dpp::co_string, "start", "Start time of the timer in dd/mm/yy hh:mm:ss format. Default: now.", false));
+                set_timer.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: this channel.", false));
             bot.global_command_create(set_timer);
             bot.global_command_create(dpp::slashcommand("list_timers", "List running timers.", bot.me.id));
+            dpp::slashcommand stop_timer("stop_timer", "Stop a running timer.", bot.me.id);
+                stop_timer.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
+            bot.global_command_create(stop_timer);
         }
     });
     

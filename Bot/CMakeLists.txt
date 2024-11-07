@@ -9,13 +9,19 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ----- Dependency lib directories -----
-include(FetchContent)
-FetchContent_Declare(dpp
-    GIT_REPOSITORY https://github.com/brainboxdotcc/DPP
-    GIT_TAG v10.0.35
-)
-FetchContent_MakeAvailable(dpp)
-target_compile_definitions(dpp PUBLIC DPP_STATIC)
+find_package(dpp 10.0.35)
+if (NOT dpp_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(dpp
+        GIT_REPOSITORY https://github.com/brainboxdotcc/DPP
+        GIT_TAG v10.0.35
+    )
+    FetchContent_MakeAvailable(dpp)
+endif()
+
+if (MSVC)
+    target_compile_definitions(dpp PUBLIC DPP_STATIC)
+endif()
 
 # Grouping the libraries
 set(LIBRARIES 
