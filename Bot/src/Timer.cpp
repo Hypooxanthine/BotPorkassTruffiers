@@ -3,6 +3,11 @@
 #include <fstream>
 #include <iomanip>
 
+Timer::Timer(dpp::cluster& bot)
+    : m_Bot(bot)
+{
+}
+
 Timer::Timer(dpp::cluster& bot, const std::string& timerName, dpp::snowflake channel, int64_t intervalSeconds, const std::string& message, const TimePoint_Type& start, const TimePoint_Type& end)
     : m_Bot(bot), m_Name(timerName), m_Channel(channel), m_IntervalSeconds(intervalSeconds), m_Message(message), m_Start(start), m_End(end)
 {
@@ -16,6 +21,7 @@ void Timer::saveToFile(const std::string& filename)
     {
         using namespace std::chrono;
 
+        file << m_Name << std::endl;
         file << m_Channel << std::endl;
         file << m_IntervalSeconds << std::endl;
         file << m_Message << std::endl;
@@ -34,6 +40,7 @@ void Timer::loadFromFile(const std::string& filename)
     {
         using namespace std::chrono;
 
+        file >> m_Name;
         file >> m_Channel;
         file >> m_IntervalSeconds;
         file >> m_Message;
@@ -183,15 +190,29 @@ std::string Timer::GetFormattedTime(const TimePoint_Type& time)
 
 std::optional<Timer::TimePoint_Type> Timer::ParseTime(const std::string& time)
 {
-    std::tm tm = {};
-    std::istringstream ss(time);
-    ss >> std::get_time(&tm, "%d/%m/%Y %H:%M:%S");
+    std::stringstream ss(time);
 
-    if (ss.bad())
+    int day = -1, month = -1, year = -1, hour = -1, minute = -1, second = -1;
+    char sep1, sep2, sep4, sep5;
+
+    ss >> day >> sep1 >> month >> sep2 >> year >> hour >> sep4 >> minute >> sep5 >> second;
+
+    if (ss.fail() || sep1 != '/' || sep2 != '/' || sep4 != ':' || sep5 != ':')
         return std::nullopt;
-    else
-    {
-        auto time_t = std::mktime(&tm);
-        return std::chrono::system_clock::from_time_t(time_t);
+
+    std::tm tm = {};
+    tm.tm_mday = day;
+    tm.tm_mon = month - 1;
+    tm.tm_year = year - 1900;
+    tm.tm_hour = hour;
+    tm.tm_min = minute;
+    tm.tm_sec = second;
+
+    auto tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+
+    if (tp == std::chrono::system_clock::time_point{}) {
+        return std::nullopt;
     }
+
+    return tp;
 }

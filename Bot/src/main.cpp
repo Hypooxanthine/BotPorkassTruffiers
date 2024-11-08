@@ -1,11 +1,31 @@
 #include <dpp/dpp.h>
 #include <iostream>
+#include <filesystem>
 
 #include "Commands.h"
 #include "Timer.h"
 	 
 const std::string BOT_TOKEN = "MTMwMzc5ODg3NzE0MDQxODU3MA.GbzGeD.9wfe7F4cb3xdyswms3Z33QaQH8myV62AoaP-Z4";
 constexpr auto CHANNEL_GENERAL = 1303418258661179547;
+
+void LoadTimers(std::unordered_map<std::string, Timer>& timers, dpp::cluster& bot)
+{
+    std::filesystem::path timersDir = "timers";
+    if (!std::filesystem::exists(timersDir))
+        return;
+
+    for (const auto& entry : std::filesystem::directory_iterator(timersDir))
+    {
+        Timer timer(bot);
+        timer.loadFromFile(entry.path().string());
+        std::string name = timer.getName();
+        timers.emplace(name, std::move(timer));
+        timers.at(name).onEnd([name, &timers]() {
+            timers.erase(name);
+        });
+        timers.at(name).start();
+    }
+}
     
 int main()
 {
@@ -47,7 +67,7 @@ int main()
             std::string start;
             decltype(Timer::ParseTime("")) startTime;
             std::visit(
-                [&start, &startTime, &event](auto&& arg) {
+                [&start, &startTime](auto&& arg) {
                     using T = std::decay_t<decltype(arg)>;
                     if constexpr (std::is_same_v<T, std::string>)
                     {
@@ -60,7 +80,7 @@ int main()
                         start = Timer::GetFormattedTime(*startTime);
                     }
                 },
-                event.get_parameter("channel")
+                event.get_parameter("start")
             );
 
             std::string end = std::get<std::string>(event.get_parameter("end"));
@@ -131,7 +151,7 @@ int main()
         }
     });
     
-    bot.on_ready([&bot](const dpp::ready_t& event) {
+    bot.on_ready([&bot, &timers](const dpp::ready_t& event) {
         if (dpp::run_once<struct clear_bot_commands>())
             bot.global_bulk_command_delete();
 
@@ -152,6 +172,8 @@ int main()
                 stop_timer.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
             bot.global_command_create(stop_timer);
         }
+
+        LoadTimers(timers, bot);
     });
     
     bot.start(dpp::st_wait);
