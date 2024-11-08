@@ -3,8 +3,10 @@
 #include <vector>
 
 #include "DAO/DAOExceptions.h"
+#include "DAO/DAOConcepts.h"
 
 template <typename ID, typename DTO>
+    requires ConvertibleToString<ID> && std::copyable<DTO>
 class IDAO
 {
 public:
@@ -14,14 +16,15 @@ public:
 public:
     
     /**
-     * @brief Create a new element.
+     * @brief Add a new element.
      * @param id The id of the element.
      * @param element The data of the element.
      * 
      * @throw DAOBadID if the id is invalid.
      * @throw DAOIDAlreadyExists if there is already an element with the given id.
+     * @throw DAOOutputStreamException if there is an error writing to the output stream.
      */
-    virtual void create(const ID_Type& id, const DTO_Type& element) const = 0;
+    virtual void add(const ID_Type& id, const DTO_Type& element) = 0;
 
     /**
      * @brief Update an existing element.
@@ -30,32 +33,34 @@ public:
      * 
      * @throw DAOBadID if the id is invalid.
      * @throw DAOIDNotFound if there is no element with the given id.
+     * @throw DAOOutputStreamException if there is an error writing to the output stream.
      */
-    virtual void update(const ID_Type& id, const DTO_Type& element) const = 0;
+    virtual void update(const ID_Type& id, const DTO_Type& element) = 0;
 
     /**
-     * @brief Remove an existing element.
-     * @param id The id of the element to remove.
+     * @brief Delete an existing element.
+     * @param id The id of the element to delete.
      * 
      * @throw DAOBadID if the id is invalid.
      * @throw DAOIDNotFound if there is no element with the given id.
+     * @throw filesystem_error if there is an error deleting the file.
      */
-    virtual void remove(const ID_Type& id) const = 0;
+    virtual void deleteByID(const ID_Type& id) = 0;
 
     /**
      * @brief Get an element by id.
-     * @return DTO_Type The element with the given id.
+     * @return const DTO_Type& The element with the given id.
      * 
      * @throw DAOBadID if the id is invalid.
      * @throw DAOIDNotFound if there is no element with the given id.
      */
-    virtual DTO_Type get(const ID_Type& id) const = 0;
+    virtual const DTO_Type& findOne(const ID_Type& id) const = 0;
 
     /**
      * @brief Get all elements.
      * @return std::vector<DTO_Type> A vector with all elements.
      */
-    virtual std::vector<DTO_Type> getAll() const = 0;
+    virtual std::vector<DTO_Type> findAll() const = 0;
 
     /**
      * @brief Check if an element with the given id exists.

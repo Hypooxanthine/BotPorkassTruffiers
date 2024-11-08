@@ -2,23 +2,24 @@
 
 #include <vector>
 
-#include "DAO/IDAO.h"
+#include "DAO/AbstractMapDAO.h"
 #include "DTO/TimerDTO.h"
 
-class TimerDAO : public IDAO<std::string, TimerDTO>
+class TimerDAO : public AbstractMapDAO<std::string, TimerDTO>
 {
 public:
     TimerDAO() = default;
     
     /**
-     * @brief Create a new element.
+     * @brief Add a new element.
      * @param id The id of the element.
      * @param element The data of the element.
      * 
      * @throw DAOBadID if the id is invalid.
      * @throw DAOIDAlreadyExists if there is already an element with the given id.
+     * @throw DAOOutputStreamException if there is an error writing to the output stream.
      */
-    void create(const ID_Type& id, const DTO_Type& element) const override;
+    void add(const ID_Type& id, const DTO_Type& element) override;
 
     /**
      * @brief Update an existing element.
@@ -27,32 +28,35 @@ public:
      * 
      * @throw DAOBadID if the id is invalid.
      * @throw DAOIDNotFound if there is no element with the given id.
+     * @throw DAOOutputStreamException if there is an error writing to the output stream.
+     * @throw filesystem_error if there is an error deleting the file.
      */
-    void update(const ID_Type& id, const DTO_Type& element) const override;
+    void update(const ID_Type& id, const DTO_Type& element) override;
 
     /**
-     * @brief Remove an existing element.
-     * @param id The id of the element to remove.
+     * @brief Delete an existing element.
+     * @param id The id of the element to delete.
      * 
      * @throw DAOBadID if the id is invalid.
      * @throw DAOIDNotFound if there is no element with the given id.
+     * @throw filesystem_error if there is an error deleting the file.
      */
-    void remove(const ID_Type& id) const override;
+    void deleteByID(const ID_Type& id) override;
 
     /**
      * @brief Get an element by id.
-     * @return DTO_Type The element with the given id.
+     * @return const DTO_Type& The element with the given id.
      * 
      * @throw DAOBadID if the id is invalid.
      * @throw DAOIDNotFound if there is no element with the given id.
      */
-    DTO_Type get(const ID_Type& id) const override;
+    const DTO_Type& findOne(const ID_Type& id) const override;
 
     /**
      * @brief Get all elements.
-     * @return std::vector<DTO_Type> A vector with all elements.
+     * @return std::vector<const DTO_Type&> A vector with all elements.
      */
-    std::vector<DTO_Type> getAll() const override;
+    std::vector<DTO_Type> findAll() const override;
 
     /**
      * @brief Check if an element with the given id exists.
@@ -68,4 +72,24 @@ public:
      */
     bool isIDValid(const ID_Type& id) const override;
 
+private:
+
+    /**
+     * @brief Write a timer to an output stream.
+     * @param os The output stream.
+     * @param timer The timer to write.
+     * 
+     * @throw DAOOutputStreamException if there is an error writing to the output stream.
+     */
+    void writeTimer(std::ostream& os, const TimerDTO& timer) const;
+
+    /**
+     * @brief Read a timer from an input stream.
+     * @param is The input stream.
+     * @return TimerDTO The timer read from the input stream.
+     * 
+     * @throw DAOInputStreamException if there is an error reading from the input stream.
+     * @throw DAOParseException if there is an error parsing the input.
+     */
+    TimerDTO readTimer(std::istream& is) const;
 };

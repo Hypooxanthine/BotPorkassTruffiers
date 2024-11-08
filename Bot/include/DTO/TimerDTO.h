@@ -17,6 +17,8 @@ public:
         : m_Name(name), m_Channel(channel), m_IntervalSeconds(intervalSeconds), m_Message(message), m_Start(start), m_End(end)
     {}
 
+    TimerDTO(const TimerDTO&) = default;
+
     inline const std::string& getName() const { return m_Name; }
     inline const dpp::snowflake& getChannel() const { return m_Channel; }
     inline int64_t getInterval() const { return m_IntervalSeconds; }
