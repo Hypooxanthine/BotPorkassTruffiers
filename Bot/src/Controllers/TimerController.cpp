@@ -92,6 +92,8 @@ bool TimerController::handleSlashCommand(const dpp::slashcommand_t& event)
             return true;
         }
 
+        m_Bot.log(dpp::ll_info, "Timer started with message \"" + message + "\".");
+
         std::string msg = "Timer started with message \"" + message + "\".\n";
         msg += " Start: " + startStr + '\n';
         msg += " End: " + endStr + '\n';
@@ -104,7 +106,7 @@ bool TimerController::handleSlashCommand(const dpp::slashcommand_t& event)
         std::string msg = "Running timers:\n";
         for (const auto& [name, timer] : getTimers())
         {
-            msg += "- " + name + ".\n"
+            msg += "- " + name + "\n"
                 "\tStart: " + TimerController::GetFormattedTime(timer.getStart()) + "\n"
                 "\tEnd: " + TimerController::GetFormattedTime(timer.getEnd()) + "\n"
                 "\tInterval: " + std::to_string(timer.getInterval()) + " seconds\n"
@@ -147,7 +149,7 @@ void TimerController::startTimer(const TimerDTO& timer)
 
 void TimerController::stopTimer(const std::string& id)
 {
-    m_Bot.stop_timer(m_RunningDppTimers.at(id));
+    m_Bot.log(dpp::ll_info, "Stopping timer with id: " + id);
 
     try
     {
@@ -159,7 +161,10 @@ void TimerController::stopTimer(const std::string& id)
         throw;
     }
 
+    m_Bot.stop_timer(m_RunningDppTimers.at(id));
+
     m_RunningDppTimers.erase(id);
+    m_Bot.log(dpp::ll_info, "Timer with id: " + id + " stopped.");
 }
 
 void TimerController::loadTimers()
@@ -197,13 +202,12 @@ void TimerController::startTimer_NoRegister(const std::string& timerId)
     }
     
     m_RunningDppTimers[timerId] = m_Bot.start_timer([this, timerId](const dpp::timer& dppTimer) {
-        m_Bot.stop_timer(dppTimer);
-
+        
         Timer timer(m_TimerDAO.findOne(timerId));
 
         if (timer.isOver())
         {
-            stopTimer(timerId);
+            stopTimer(std::string(timerId));
             return;
         }
         else
@@ -214,14 +218,17 @@ void TimerController::startTimer_NoRegister(const std::string& timerId)
 
                 Timer timer(m_TimerDAO.findOne(timerId));
 
-                if (timer.isOver())
-                {
-                    stopTimer(timerId);
-                    return;
-                }
-                else
+                if (!timer.isOver())
                     sendMessage(timerId);
+                else
+                {
+                    m_Bot.log(dpp::ll_info, "Timer is over. Timer id: " + timerId);
+                    stopTimer(std::string(timerId));
+                }
+
             }, timer.getData().getInterval());
+            
+            m_Bot.stop_timer(dppTimer);
         }
     }, secondsToNextInterval);
 }

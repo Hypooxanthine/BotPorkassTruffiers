@@ -19,7 +19,8 @@ enable_testing()
 
 target_link_libraries(BotTests
     GTest::gtest_main
-    Bot_Lib
+    dpp
+    ${PROJECT_LIB_NAME}
 )
 
 include(GoogleTest)

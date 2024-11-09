@@ -14,7 +14,6 @@ public:
     {
         dao = TimerDAO();
         gen = std::mt19937(rd());
-
     }
 
     void TearDown() override

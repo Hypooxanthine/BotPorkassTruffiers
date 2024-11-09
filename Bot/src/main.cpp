@@ -27,8 +27,8 @@ int main()
         }
         else if (timerController.handleSlashCommand(event))
             return;
-            
-        event.reply(dpp::message("Unknown command").set_flags(dpp::m_ephemeral));
+        else
+            event.reply(dpp::message("Unknown command").set_flags(dpp::m_ephemeral));
     });
     
     bot.on_ready([&bot, &timerController](const dpp::ready_t& event) {

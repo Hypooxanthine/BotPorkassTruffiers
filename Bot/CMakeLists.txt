@@ -2,35 +2,16 @@ cmake_minimum_required(VERSION 3.8)
 
 # ----- Project definition -----
 
-project(Bot)
+set(PROJECT_NAME Bot)
+set(PROJECT_LIB_NAME ${PROJECT_NAME}_Lib)
+
+project(${PROJECT_NAME})
 
 # C++ standard
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ----- Dependency lib directories -----
-
-if (UNIX)
-    find_package(dpp 10.0.35)
-    if (NOT dpp_FOUND)
-        include(FetchContent)
-        FetchContent_Declare(dpp
-            GIT_REPOSITORY https://github.com/brainboxdotcc/DPP
-            GIT_TAG v10.0.35
-        )
-        FetchContent_MakeAvailable(dpp)
-    endif()
-endif()
-
-if (MSVC)
-    include(FetchContent)
-    FetchContent_Declare(dpp
-        GIT_REPOSITORY https://github.com/brainboxdotcc/DPP
-        GIT_TAG v10.0.35
-    )
-    FetchContent_MakeAvailable(dpp)
-    target_compile_definitions(dpp PUBLIC DPP_STATIC)
-endif()
 
 # Grouping the libraries
 set(LIBRARIES 
@@ -47,23 +28,23 @@ set(VENDOR_DIR  vendor)
 # ----- Project files -----
 
 # Header files
-file(GLOB_RECURSE PROJECT_HEADERS   ${INCLUDE_DIR}/*.h)
-file(GLOB_RECURSE VENDOR_HEADERS    ${VENDOR_DIR}/*.h)
-set(HEADERS                         ${VENDOR_HEADERS} ${PROJECT_HEADERS})
+file(GLOB_RECURSE PROJECT_HEADERS                           ${INCLUDE_DIR}/*.h)
+file(GLOB_RECURSE VENDOR_HEADERS                            ${VENDOR_DIR}/*.h)
+set(HEADERS                                                 ${VENDOR_HEADERS} ${PROJECT_HEADERS})
 
 # Source files
-file(GLOB_RECURSE VENDOR_IMPL   ${VENDOR_DIR}/*.cpp)
-file(GLOB_RECURSE PROJECT_IMPL  ${SOURCE_DIR}/*.cpp)
+file(GLOB_RECURSE VENDOR_IMPL                               ${VENDOR_DIR}/*.cpp)
+file(GLOB_RECURSE PROJECT_IMPL                              ${SOURCE_DIR}/*.cpp)
 list(FILTER PROJECT_IMPL EXCLUDE REGEX ".*main\\.cpp$")
-set(SOURCES                     ${VENDOR_IMPL} ${PROJECT_IMPL})
+set(SOURCES                                                 ${VENDOR_IMPL} ${PROJECT_IMPL})
 
 # ----- Binaries building -----
-add_library(Bot_Lib                     STATIC  ${SOURCES} ${HEADERS})
-target_include_directories(Bot_Lib      PUBLIC  ${VENDOR_DIR} ${INCLUDE_DIR})
-target_link_libraries(Bot_Lib                   ${LIBRARIES})
+add_library(${PROJECT_LIB_NAME}                     STATIC  ${SOURCES} ${HEADERS})
+target_include_directories(${PROJECT_LIB_NAME}      PUBLIC  ${VENDOR_DIR} ${INCLUDE_DIR})
+target_link_libraries(${PROJECT_LIB_NAME}                   ${LIBRARIES})
 
-add_executable(Bot                              ${SOURCE_DIR}/main.cpp)
-target_link_libraries(Bot               PRIVATE Bot_Lib)
+add_executable(${PROJECT_NAME}                              ${SOURCE_DIR}/main.cpp)
+target_link_libraries(${PROJECT_NAME}               PRIVATE ${PROJECT_LIB_NAME})
 
 # ----- Testing -----
 
