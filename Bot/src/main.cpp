@@ -3,155 +3,35 @@
 #include <filesystem>
 
 #include "Commands.h"
-#include "Timer.h"
+#include "Controllers/TimerController.h"
 	 
 const std::string BOT_TOKEN = "MTMwMzc5ODg3NzE0MDQxODU3MA.GbzGeD.9wfe7F4cb3xdyswms3Z33QaQH8myV62AoaP-Z4";
 constexpr auto CHANNEL_GENERAL = 1303418258661179547;
-
-void LoadTimers(std::unordered_map<std::string, Timer>& timers, dpp::cluster& bot)
-{
-    std::filesystem::path timersDir = "timers";
-    if (!std::filesystem::exists(timersDir))
-        return;
-
-    for (const auto& entry : std::filesystem::directory_iterator(timersDir))
-    {
-        Timer timer(bot);
-        timer.loadFromFile(entry.path().string());
-        std::string name = timer.getName();
-        timers.emplace(name, std::move(timer));
-        timers.at(name).onEnd([name, &timers]() {
-            timers.erase(name);
-        });
-        timers.at(name).start();
-    }
-}
     
 int main()
 {
-    std::unordered_map<std::string, Timer> timers;
 
     /* Setup the bot */
     dpp::cluster bot(BOT_TOKEN);
+
+    TimerController timerController(bot);
     
     bot.on_log(dpp::utility::cout_logger());
     
     /* The event is fired when someone issues your commands */
-    bot.on_slashcommand([&bot, &timers](const dpp::slashcommand_t& event) {
+    bot.on_slashcommand([&bot, &timerController](const dpp::slashcommand_t& event) {
+        
         if (event.command.get_command_name() == "ping")
         {
             event.reply(dpp::message("Pong!").set_flags(dpp::m_ephemeral));
         }
-        else if (event.command.get_command_name() == "set_timer")
-        {
-            std::string name = std::get<std::string>(event.get_parameter("name"));
-
-            if (timers.contains(name))
-            {
-                event.reply(dpp::message("Error: Timer with name \"" + name + "\" already exists.").set_flags(dpp::m_ephemeral));
-                return;
-            }
-
-            dpp::snowflake channel;
-            std::visit(
-                [&channel, &event](auto&& arg) {
-                    using T = std::decay_t<decltype(arg)>;
-                    if constexpr (std::is_same_v<T, dpp::snowflake>)
-                        channel = arg;
-                    if constexpr (std::is_same_v<T, std::monostate>)
-                        channel = event.command.channel_id;
-                },
-                event.get_parameter("channel")
-            );
-
-            std::string start;
-            decltype(Timer::ParseTime("")) startTime;
-            std::visit(
-                [&start, &startTime](auto&& arg) {
-                    using T = std::decay_t<decltype(arg)>;
-                    if constexpr (std::is_same_v<T, std::string>)
-                    {
-                        start = arg;
-                        startTime = Timer::ParseTime(start);
-                    }
-                    if constexpr (std::is_same_v<T, std::monostate>)
-                    {
-                        startTime = std::chrono::system_clock::now();
-                        start = Timer::GetFormattedTime(*startTime);
-                    }
-                },
-                event.get_parameter("start")
-            );
-
-            std::string end = std::get<std::string>(event.get_parameter("end"));
-
-            auto endTime = Timer::ParseTime(end);
-
-            if (!startTime || !endTime)
-            {
-                event.reply(dpp::message("Error: Invalid time format.").set_flags(dpp::m_ephemeral));
-                return;
-            }
-
-            end = Timer::GetFormattedTime(*endTime);
-            start = Timer::GetFormattedTime(*startTime);
-
-            if (Timer::IsDatePassed(*endTime))
-            {
-                event.reply(dpp::message("Error: End time " + end + " is in the past.").set_flags(dpp::m_ephemeral));
-                return;
-            }
-
-            int64_t interval = std::get<int64_t>(event.get_parameter("interval"));
-            std::string message = std::get<std::string>(event.get_parameter("message"));
-
-            timers.emplace(name, Timer{bot, name, channel, interval, message, *startTime, *endTime});
-            auto& timer = timers.at(name);
-
-            timer.onEnd([name, &timers]() {
-                timers.erase(name);
-            });
-            timer.start();
-
-            std::string msg = "Timer started with message \"" + message + "\".\n";
-            msg += " Start: " + start + '\n';
-            msg += " End: " + end + '\n';
-            msg += " Interval: " + std::to_string(interval) + " seconds.";
-
-            event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
-        }
-        else if (event.command.get_command_name() == "list_timers")
-        {
-            std::string msg = "Running timers:\n";
-            for (const auto& [name, timer] : timers)
-            {
-                msg += "- " + name + ".\n"
-                    "\tStart: " + Timer::GetFormattedTime(timer.getStart()) + "\n"
-                    "\tEnd: " + Timer::GetFormattedTime(timer.getEnd()) + "\n"
-                    "\tInterval: " + std::to_string(timer.getInterval()) + " seconds\n"
-                    "\tMessage: " + timer.getMessage() + "\n";
-            }
-
-            event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
-        }
-        else if (event.command.get_command_name() == "stop_timer")
-        {
-            std::string name = std::get<std::string>(event.get_parameter("name"));
-
-            if (!timers.contains(name))
-            {
-                event.reply(dpp::message("Error: Timer with name \"" + name + "\" does not exist.").set_flags(dpp::m_ephemeral));
-                return;
-            }
-
-            timers.at(name).stop();
-            timers.erase(name);
-
-            event.reply(dpp::message("Timer with name \"" + name + "\" stopped.").set_flags(dpp::m_ephemeral));
-        }
+        else if (timerController.handleSlashCommand(event))
+            return;
+            
+        event.reply(dpp::message("Unknown command").set_flags(dpp::m_ephemeral));
     });
     
-    bot.on_ready([&bot, &timers](const dpp::ready_t& event) {
+    bot.on_ready([&bot, &timerController](const dpp::ready_t& event) {
         if (dpp::run_once<struct clear_bot_commands>())
             bot.global_bulk_command_delete();
 
@@ -173,7 +53,7 @@ int main()
             bot.global_command_create(stop_timer);
         }
 
-        LoadTimers(timers, bot);
+        timerController.init();
     });
     
     bot.start(dpp::st_wait);

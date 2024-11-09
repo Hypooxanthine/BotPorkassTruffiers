@@ -10,10 +10,12 @@ void TimerDAO::add(const ID_Type& id, const TimerDTO& timer)
     if (idExists(id))
         throw DAOIDAlreadyExists(id);
     
+    // Create needed directories
+    std::filesystem::create_directories("data/timers");
     auto file = std::ofstream("data/timers/" + id + ".txt");
 
     if (!file.is_open())
-        throw DAOOutputStreamException();
+        throw DAOOutputStreamException(id);
 
     try {
         writeTimer(file, timer);
@@ -100,16 +102,54 @@ TimerDTO TimerDAO::readTimer(std::istream& is) const
     uint64_t interval;
     int64_t start;
     int64_t end;
+    std::string line;
 
+    // Name
     std::getline(is, name);
-    is >> channel;
-    is >> interval;
+    // Channel
+    std::getline(is, line);
+    channel = dpp::snowflake(std::stoull(line));
+    // Interval
+    std::getline(is, line);
+    interval = std::stoull(line);
+    // Message
     std::getline(is, message);
-    is >> start;
-    is >> end;
+    // Start
+    std::getline(is, line);
+    start = std::stoll(line);
+    // End
+    std::getline(is, line);
+    end = std::stoll(line);
 
     if (is.bad())
         throw DAOInputStreamException();
 
     return TimerDTO(name, channel, interval, message, TimerDTO::TimePoint_Type(seconds(start)), TimerDTO::TimePoint_Type(seconds(end)));
+}
+
+void TimerDAO::loadTimers()
+{
+    m_Elements.clear();
+
+    for (const auto& entry : std::filesystem::directory_iterator("data/timers"))
+    {
+        if (!entry.is_regular_file() || !entry.path().has_extension() || entry.path().extension() != ".txt")
+            continue;
+
+        auto file = std::ifstream(entry.path());
+
+        if (!file.is_open())
+            throw DAOInputStreamException();
+
+        try {
+            auto timer = readTimer(file);
+            ID_Type id = entry.path().stem().string();
+            m_Elements[id] = timer;
+
+            std::cout << "Loaded timer: " << id << std::endl;
+        } catch (...) {
+            file.close();
+            throw;
+        }
+    }
 }

@@ -33,9 +33,6 @@ public:
     inline void setStart(const TimePoint_Type& start) { m_Start = start; }
     inline void setEnd(const TimePoint_Type& end) { m_End = end; }
 
-    void saveToFile(const std::string& filename);
-    void loadFromFile(const std::string& filename);
-
 private:
     std::string m_Name;
     dpp::snowflake m_Channel = 0;

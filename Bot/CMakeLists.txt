@@ -54,9 +54,19 @@ set(HEADERS                         ${VENDOR_HEADERS} ${PROJECT_HEADERS})
 # Source files
 file(GLOB_RECURSE VENDOR_IMPL   ${VENDOR_DIR}/*.cpp)
 file(GLOB_RECURSE PROJECT_IMPL  ${SOURCE_DIR}/*.cpp)
+list(FILTER PROJECT_IMPL EXCLUDE REGEX ".*main\\.cpp$")
 set(SOURCES                     ${VENDOR_IMPL} ${PROJECT_IMPL})
 
 # ----- Binaries building -----
-add_executable(Bot                        ${SOURCES} ${HEADERS})
-target_include_directories(Bot    PUBLIC  ${VENDOR_DIR} ${INCLUDE_DIR})
-target_link_libraries(Bot                 ${LIBRARIES})
+add_library(Bot_Lib                     STATIC  ${SOURCES} ${HEADERS})
+target_include_directories(Bot_Lib      PUBLIC  ${VENDOR_DIR} ${INCLUDE_DIR})
+target_link_libraries(Bot_Lib                   ${LIBRARIES})
+
+add_executable(Bot                              ${SOURCE_DIR}/main.cpp)
+target_link_libraries(Bot               PRIVATE Bot_Lib)
+
+# ----- Testing -----
+
+add_subdirectory("tests")
+
+include(CTest)

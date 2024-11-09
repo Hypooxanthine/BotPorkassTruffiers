@@ -12,3 +12,5 @@ project ("BotPorkassTruffiers")
 # ----- Subdirectories -----
 
 add_subdirectory ("Bot")
+
+include(CTest)

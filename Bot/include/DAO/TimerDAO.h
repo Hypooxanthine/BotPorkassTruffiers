@@ -72,6 +72,13 @@ public:
      */
     bool isIDValid(const ID_Type& id) const override;
 
+    /**
+     * @brief Load all timers from the data directory.
+     * 
+     * @throw DAOInputStreamException if there is an error reading from the input stream.
+     */
+    void loadTimers();
+
 private:
 
     /**
