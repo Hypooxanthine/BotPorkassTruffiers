@@ -3,7 +3,7 @@
 static bool INSTANTIATED = false;
 
 TimerController::TimerController(dpp::cluster& bot)
-    : m_Bot(bot)
+    : Controller(bot)
 {
     if (INSTANTIATED)
         throw std::runtime_error("TimerController is a singleton and cannot be instantiated more than once.");
@@ -16,12 +16,30 @@ TimerController::~TimerController()
     INSTANTIATED = false;
 }
 
-void TimerController::init()
+void TimerController::onInit()
 {
     loadTimers();
 }
 
-bool TimerController::handleSlashCommand(const dpp::slashcommand_t& event)
+void TimerController::onCreateCommands() const
+{
+    m_Bot.global_command_create(dpp::slashcommand("ping", "Ping the bot", m_Bot.me.id));
+
+    dpp::slashcommand set_timer("set_timer", "Set a timer", m_Bot.me.id);
+        set_timer.add_option(dpp::command_option(dpp::co_string, "name", "Timer name. Must be unique.", true));
+        set_timer.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
+        set_timer.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", true));
+        set_timer.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", true));
+        set_timer.add_option(dpp::command_option(dpp::co_string, "start", "Start time of the timer in dd/mm/yy hh:mm:ss format. Default: now.", false));
+        set_timer.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: this channel.", false));
+    m_Bot.global_command_create(set_timer);
+    m_Bot.global_command_create(dpp::slashcommand("list_timers", "List running timers.", m_Bot.me.id));
+    dpp::slashcommand stop_timer("stop_timer", "Stop a running timer.", m_Bot.me.id);
+        stop_timer.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
+    m_Bot.global_command_create(stop_timer);
+}
+
+bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
 {
     bool handled = true;
     using namespace std::string_literals;

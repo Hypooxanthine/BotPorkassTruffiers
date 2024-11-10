@@ -1,13 +1,14 @@
 #pragma once
 
 #include <list>
-#include <dpp/dpp.h>
+
+#include "Controllers/Controller.h"
 
 #include "DAO/TimerDAO.h"
 #include "DTO/TimerDTO.h"
 #include "Controllers/ControllerExceptions.h"
 
-class TimerController
+class TimerController final : public Controller
 {
 public:
     using TimePoint_Type = std::chrono::time_point<std::chrono::system_clock>;
@@ -24,13 +25,51 @@ public:
 
     TimerController& operator=(TimerController&&) = delete;
 
+private:
+
+    /**
+     * @brief Timer nested class responsible for handling the timer logic.
+     * 
+     */
+    class Timer
+    {
+    public:
+        Timer(const TimerDTO& timer);
+
+        inline const TimerDTO& getData() const { return m_TimerDTO; }
+    
+        bool isOver() const;
+        int64_t getSecondsToNextInterval() const;
+        std::string getParsedMessage() const;
+
+    private:
+        const TimerDTO& m_TimerDTO;
+    };
+    
+    static bool IsDatePassed(const TimePoint_Type& time);
+    static std::string GetFormattedTime(const TimePoint_Type& time);
+
+    /**
+     * @brief Parse a time string in the format "dd/mm/yy hh:mm:ss".
+     * 
+     * @param time The time string.
+     * @return TimePoint_Type The parsed time.
+     * 
+     * @throw ParsingException if the time string is invalid.
+     */
+    static TimePoint_Type ParseTime(const std::string& time);
+
+private:
+
     /**
      * @brief Initialize the controller, loads the timers from persistent storage.
      * 
      */
-    void init();
+    void onInit() override;
 
-    bool handleSlashCommand(const dpp::slashcommand_t& event);
+    void onCreateCommands() const override;
+
+    bool onSlashCommand(const dpp::slashcommand_t& event) override;
 
     /**
      * @brief 
@@ -61,49 +100,12 @@ public:
      * @return const TimerDAO::Map_Type& The timers.
      */
     inline const auto& getTimers() const { return m_TimerDAO.getDataMap(); }
-    
-    static bool IsDatePassed(const TimePoint_Type& time);
-    static std::string GetFormattedTime(const TimePoint_Type& time);
 
-    /**
-     * @brief Parse a time string in the format "dd/mm/yy hh:mm:ss".
-     * 
-     * @param time The time string.
-     * @return TimePoint_Type The parsed time.
-     * 
-     * @throw ParsingException if the time string is invalid.
-     */
-    static TimePoint_Type ParseTime(const std::string& time);
-
-private:
-
-    /**
-     * @brief Timer nested class responsible for handling the timer logic.
-     * 
-     */
-    class Timer
-    {
-    public:
-        Timer(const TimerDTO& timer);
-
-        inline const TimerDTO& getData() const { return m_TimerDTO; }
-    
-        bool isOver() const;
-        int64_t getSecondsToNextInterval() const;
-        std::string getParsedMessage() const;
-
-    private:
-        const TimerDTO& m_TimerDTO;
-    };
-
-
-private:
     void loadTimers();
     void startTimer_NoRegister(const std::string& timerId);
     void sendMessage(const std::string& timerId);
 
 private:
-    dpp::cluster& m_Bot;
     TimerDAO m_TimerDAO;
     std::unordered_map<std::string, dpp::timer> m_RunningDppTimers;
 };

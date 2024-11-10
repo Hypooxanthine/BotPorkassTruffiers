@@ -9,9 +9,12 @@ get_filename_component(ROOT "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 
 project ("BotPorkassTruffiers")
 
-# ----- Subdirectories -----
+if(MSVC)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS -D_WINDLL -D_CRT_NONSTDC_NO_WARNINGS)
+    add_compile_options(/wd4251) 
+endif()
 
-# ----- Dependency lib directories -----
+# ----- Subdirectories -----
 
 find_package(dpp QUIET)
 if (NOT dpp_FOUND)

@@ -55,22 +55,7 @@ int main()
             bot.global_bulk_command_delete();
 
         if (dpp::run_once<struct register_bot_commands>())
-        {
-            bot.global_command_create(dpp::slashcommand("ping", "Ping the bot", bot.me.id));
-
-            dpp::slashcommand set_timer("set_timer", "Set a timer", bot.me.id);
-                set_timer.add_option(dpp::command_option(dpp::co_string, "name", "Timer name. Must be unique.", true));
-                set_timer.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
-                set_timer.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", true));
-                set_timer.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", true));
-                set_timer.add_option(dpp::command_option(dpp::co_string, "start", "Start time of the timer in dd/mm/yy hh:mm:ss format. Default: now.", false));
-                set_timer.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: this channel.", false));
-            bot.global_command_create(set_timer);
-            bot.global_command_create(dpp::slashcommand("list_timers", "List running timers.", bot.me.id));
-            dpp::slashcommand stop_timer("stop_timer", "Stop a running timer.", bot.me.id);
-                stop_timer.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
-            bot.global_command_create(stop_timer);
-        }
+            timerController.createCommands();
 
         timerController.init();
     });
