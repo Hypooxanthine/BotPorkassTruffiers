@@ -1,6 +1,6 @@
 #pragma once
 
-#include <DPP/dpp.h>
+#include <dpp/dpp.h>
 
 class Controller
 {
