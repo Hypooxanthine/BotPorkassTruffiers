@@ -4,15 +4,28 @@
 
 #include "Commands.h"
 #include "Controllers/TimerController.h"
-	 
-const std::string BOT_TOKEN = "MTMwMzc5ODg3NzE0MDQxODU3MA.GbzGeD.9wfe7F4cb3xdyswms3Z33QaQH8myV62AoaP-Z4";
-constexpr auto CHANNEL_GENERAL = 1303418258661179547;
     
 int main()
 {
+    std::filesystem::path keysPath("data/keys");
+    std::ifstream file(keysPath / "bot_token.txt");
+    std::string botToken;
+    if (file.is_open())
+    {
+        std::getline(file, botToken);
+        file.close();
+    }
+    else
+    {
+        std::cerr << "Could not open bot_token.txt." << std::endl;
+        std::filesystem::create_directories(keysPath);
+        std::ofstream newFile(keysPath / "bot_token.txt");
+        std::cerr << "File " + (keysPath / "bot_token.txt").string() + " created. Please insert your bot token." << std::endl;
+        return 1;
+    }
 
     /* Setup the bot */
-    dpp::cluster bot(BOT_TOKEN);
+    dpp::cluster bot(botToken);
 
     TimerController timerController(bot);
     
@@ -56,7 +69,16 @@ int main()
         timerController.init();
     });
     
-    bot.start(dpp::st_wait);
+    try
+    {
+        bot.start(dpp::st_wait);
+    }
+    catch(const dpp::invalid_token_exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        std::cerr << "Please check your bot_token.txt file" << std::endl;
+        return 1;
+    }
     
     return 0;
 }
