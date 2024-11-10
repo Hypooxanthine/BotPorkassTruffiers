@@ -86,7 +86,9 @@ void TimerDAO::writeTimer(std::ostream& os, const TimerDTO& timer) const
         << timer.getInterval() << std::endl
         << timer.getMessage() << std::endl
         << duration_cast<seconds>(timer.getStart().time_since_epoch()).count() << std::endl
-        << duration_cast<seconds>(timer.getEnd().time_since_epoch()).count() << std::endl;
+        << duration_cast<seconds>(timer.getEnd().time_since_epoch()).count() << std::endl
+        << timer.getImageURL() << std::endl
+        << timer.getTitle() << std::endl;
 
     if (os.bad())
         throw DAOOutputStreamException();
@@ -102,6 +104,8 @@ TimerDTO TimerDAO::readTimer(std::istream& is) const
     uint64_t interval;
     int64_t start;
     int64_t end;
+    std::string imageURL;
+    std::string title;
     std::string line;
 
     // Name
@@ -120,11 +124,15 @@ TimerDTO TimerDAO::readTimer(std::istream& is) const
     // End
     std::getline(is, line);
     end = std::stoll(line);
+    // Image URL
+    std::getline(is, imageURL);
+    // Title
+    std::getline(is, title);
 
     if (is.bad())
         throw DAOInputStreamException();
 
-    return TimerDTO(name, channel, interval, message, TimerDTO::TimePoint_Type(seconds(start)), TimerDTO::TimePoint_Type(seconds(end)));
+    return TimerDTO(name, channel, interval, message, TimerDTO::TimePoint_Type(seconds(start)), TimerDTO::TimePoint_Type(seconds(end)), imageURL, title);
 }
 
 void TimerDAO::loadTimers()

@@ -32,7 +32,7 @@ private:
     
         bool isOver() const;
         int64_t getSecondsToNextInterval() const;
-        std::string getParsedMessage() const;
+        std::string parseString(const std::string& str) const;
 
     private:
         const TimerDTO& m_TimerDTO;

@@ -30,9 +30,12 @@ void TimerController::onCreateCommands() const
         set_timer.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
         set_timer.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", true));
         set_timer.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", true));
+        set_timer.add_option(dpp::command_option(dpp::co_string, "title", "Title of the timer.", false));
         set_timer.add_option(dpp::command_option(dpp::co_string, "start", "Start time of the timer in dd/mm/yy hh:mm:ss format. Default: now.", false));
         set_timer.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: this channel.", false));
+        set_timer.add_option(dpp::command_option(dpp::co_string, "image", "Image to send with the message.", false));
     m_Bot.global_command_create(set_timer);
+
     m_Bot.global_command_create(dpp::slashcommand("list_timers", "List running timers.", m_Bot.me.id));
     dpp::slashcommand stop_timer("stop_timer", "Stop a running timer.", m_Bot.me.id);
         stop_timer.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
@@ -58,6 +61,26 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
                     channel = event.command.channel_id;
             },
             event.get_parameter("channel")
+        );
+
+        std::string image = "";
+        std::visit(
+            [&image, &event](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::string>)
+                    image = arg;
+            },
+            event.get_parameter("image")
+        );
+
+        std::string title = "";
+        std::visit(
+            [&title, &event](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::string>)
+                    title = arg;
+            },
+            event.get_parameter("title")
         );
 
         std::string startStr = "", endStr = std::get<std::string>(event.get_parameter("end"));
@@ -102,6 +125,8 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
         t.setEnd(endTime);
         t.setInterval(interval);
         t.setMessage(message);
+        t.setImageURL(image);
+        t.setTitle(title);
 
         try
         {
@@ -115,10 +140,14 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
 
         m_Bot.log(dpp::ll_info, "Timer started with message \"" + message + "\".");
 
-        std::string msg = "Timer started with message \"" + message + "\".\n";
-        msg += " Start: " + startStr + '\n';
-        msg += " End: " + endStr + '\n';
-        msg += " Interval: " + std::to_string(interval) + " seconds.";
+        std::string msg = "Started timer \"" + name + "\" with message \"" + message + "\n";
+        if (!title.empty())
+            msg += "\tTitle: " + title + '\n';
+        msg += "\tStart: " + startStr + '\n';
+        msg += "\tEnd: " + endStr + '\n';
+        msg += "\tInterval: " + std::to_string(interval) + " seconds.";
+        if (!image.empty())
+            msg += "\n\tImage: " + image;
 
         event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
     }
@@ -258,11 +287,22 @@ void TimerController::sendMessage(const std::string& timerId)
 {
     Timer timer(m_TimerDAO.findOne(timerId));
 
-    auto msg = timer.getParsedMessage();
+    auto msg = timer.parseString(timer.getData().getMessage());
     dpp::embed embed;
+    
+    if (timer.getData().getTitle().empty())
         embed.set_description(msg);
+    else
+    {
+        auto title = timer.parseString(timer.getData().getTitle());
+        embed.add_field(title, msg);
+    }
+
+    if (!timer.getData().getImageURL().empty())
+        embed.set_image(timer.getData().getImageURL());
+
     m_Bot.message_create(dpp::message(timer.getData().getChannel(), embed));
-    m_Bot.log(dpp::ll_info, "Timer message: " + msg);
+    m_Bot.log(dpp::ll_info, "Timer \"" + timerId + "\" triggered");
 }
 
 bool TimerController::IsDatePassed(const TimePoint_Type& time)
@@ -341,9 +381,9 @@ int64_t TimerController::Timer::getSecondsToNextInterval() const
     }
 }
 
-std::string TimerController::Timer::getParsedMessage() const
+std::string TimerController::Timer::parseString(const std::string& str) const
 {
-    std::string parsedMessage = m_TimerDTO.getMessage();
+    std::string parsedMessage = str;
 
     auto now = std::chrono::system_clock::now();
     auto remaining = m_TimerDTO.getEnd() - now;
