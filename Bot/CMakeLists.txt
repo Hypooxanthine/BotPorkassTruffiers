@@ -2,10 +2,8 @@ cmake_minimum_required(VERSION 3.8)
 
 # ----- Project definition -----
 
-set(PROJECT_NAME Bot)
+project(Bot)
 set(PROJECT_LIB_NAME ${PROJECT_NAME}_Lib)
-
-project(${PROJECT_NAME})
 
 # C++ standard
 set(CMAKE_CXX_STANDARD 23)
@@ -13,8 +11,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ----- Dependency lib directories -----
 
+find_package(dpp QUIET)
+if (NOT dpp_FOUND)
+    message("dpp not found, building it from source")
+endif()
+
 # Grouping the libraries
-set(LIBRARIES 
+set(LIBRARIES
     dpp
 )
 
@@ -45,6 +48,15 @@ target_link_libraries(${PROJECT_LIB_NAME}                   ${LIBRARIES})
 
 add_executable(${PROJECT_NAME}                              ${SOURCE_DIR}/main.cpp)
 target_link_libraries(${PROJECT_NAME}               PRIVATE ${PROJECT_LIB_NAME})
+
+# ----- Copying DLLs -----
+
+if (NOT dpp_FOUND AND WIN32)
+    include("${CMAKE_SOURCE_DIR}/cmake/CopyDlls.cmake")
+
+    copy_dlls_from_dir("${libdpp_BINARY_DIR}/library" ${PROJECT_NAME})
+    copy_dlls(dpp ${PROJECT_NAME})
+endif()
 
 # ----- Testing -----
 

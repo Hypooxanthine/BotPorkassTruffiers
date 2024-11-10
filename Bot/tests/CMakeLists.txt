@@ -13,17 +13,17 @@ FetchContent_MakeAvailable(googletest)
 
 file(GLOB_RECURSE TEST_SOURCES  ./*.cpp)
 
-add_executable(BotTests ${TEST_SOURCES})
+add_executable(${PROJECT_NAME} ${TEST_SOURCES})
 
-enable_testing()
-
-target_link_libraries(BotTests
+target_link_libraries(${PROJECT_NAME}
     GTest::gtest_main
-    dpp
+    ${LIBRARIES}
     ${PROJECT_LIB_NAME}
 )
 
+enable_testing()
+
 include(GoogleTest)
-gtest_discover_tests(BotTests)
+gtest_discover_tests(${PROJECT_NAME})
 
 include(CTest)
