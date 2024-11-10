@@ -1,0 +1,4 @@
+[submodule "DPP"]
+	path = DPP
+	url = git@github.com:brainboxdotcc/DPP.git
+	branch = v10.0.35
