@@ -145,8 +145,6 @@ void TimerDAO::loadTimers()
             auto timer = readTimer(file);
             ID_Type id = entry.path().stem().string();
             m_Elements[id] = timer;
-
-            std::cout << "Loaded timer: " << id << std::endl;
         } catch (...) {
             file.close();
             throw;

@@ -23,6 +23,7 @@ void TimerController::init()
 
 bool TimerController::handleSlashCommand(const dpp::slashcommand_t& event)
 {
+    bool handled = true;
     using namespace std::string_literals;
 
     if (event.command.get_command_name() == "set_timer")
@@ -67,7 +68,7 @@ bool TimerController::handleSlashCommand(const dpp::slashcommand_t& event)
         catch (const std::exception& e)
         {
             event.reply(dpp::message("Error: "s + e.what()).set_flags(dpp::m_ephemeral));
-            return true;
+            return handled;
         }
 
         std::string name = std::get<std::string>(event.get_parameter("name"));
@@ -89,7 +90,7 @@ bool TimerController::handleSlashCommand(const dpp::slashcommand_t& event)
         catch (const std::exception& e)
         {
             event.reply(dpp::message("Error: "s + e.what()).set_flags(dpp::m_ephemeral));
-            return true;
+            return handled;
         }
 
         m_Bot.log(dpp::ll_info, "Timer started with message \"" + message + "\".");
@@ -126,15 +127,15 @@ bool TimerController::handleSlashCommand(const dpp::slashcommand_t& event)
         catch (const std::exception& e)
         {
             event.reply(dpp::message("Error: "s + e.what()).set_flags(dpp::m_ephemeral));
-            return true;
+            return handled;
         }
 
         event.reply(dpp::message("Timer with name \"" + name + "\" stopped.").set_flags(dpp::m_ephemeral));
     }
     else
-        return false;
+        handled = false;
 
-    return true;
+    return handled;
 }
 
 void TimerController::startTimer(const TimerDTO& timer)
