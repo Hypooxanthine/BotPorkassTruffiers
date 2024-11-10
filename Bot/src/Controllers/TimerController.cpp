@@ -19,12 +19,12 @@ TimerController::~TimerController()
 void TimerController::onInit()
 {
     loadTimers();
+    
+    m_Bot.log(dpp::ll_info, "PingController initialized");
 }
 
 void TimerController::onCreateCommands() const
 {
-    m_Bot.global_command_create(dpp::slashcommand("ping", "Ping the bot", m_Bot.me.id));
-
     dpp::slashcommand set_timer("set_timer", "Set a timer", m_Bot.me.id);
         set_timer.add_option(dpp::command_option(dpp::co_string, "name", "Timer name. Must be unique.", true));
         set_timer.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
@@ -37,6 +37,8 @@ void TimerController::onCreateCommands() const
     dpp::slashcommand stop_timer("stop_timer", "Stop a running timer.", m_Bot.me.id);
         stop_timer.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
     m_Bot.global_command_create(stop_timer);
+
+    m_Bot.log(dpp::ll_info, "Commands created");
 }
 
 bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
