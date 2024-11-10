@@ -5,23 +5,23 @@
 class Controller
 {
 public:
-    Controller(dpp::cluster& bot) : m_Bot(bot) {}
+    Controller(dpp::cluster& bot);
 
-    virtual ~Controller() = default;
+    virtual ~Controller();
 
     Controller(const Controller&) = delete;
 
     Controller& operator=(const Controller&) = delete;
 
-    Controller(Controller&&) = delete;
+    Controller(Controller&&) = default;
 
-    Controller& operator=(Controller&&) = delete;
+    Controller& operator=(Controller&&) = default;
 
-    inline void init() { onInit(); }
+    void init();
 
-    inline void createCommands() const { onCreateCommands(); }
+    void createCommands() const;
 
-    inline bool handleSlashCommand(const dpp::slashcommand_t& event) { return onSlashCommand(event); }
+    bool handleSlashCommand(const dpp::slashcommand_t& event);
 
 protected:
 

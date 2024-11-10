@@ -17,14 +17,6 @@ public:
 
     ~TimerController();
 
-    TimerController(const TimerController&) = delete;
-
-    TimerController& operator=(const TimerController&) = delete;
-
-    TimerController(TimerController&&) = delete;
-
-    TimerController& operator=(TimerController&&) = delete;
-
 private:
 
     /**

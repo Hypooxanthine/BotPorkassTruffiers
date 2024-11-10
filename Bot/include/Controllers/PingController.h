@@ -7,6 +7,8 @@ class PingController final : public Controller
 public:
     PingController(dpp::cluster& bot);
 
+    ~PingController();
+
 protected:
     void onInit() override;
 

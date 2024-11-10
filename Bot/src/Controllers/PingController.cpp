@@ -5,6 +5,10 @@ PingController::PingController(dpp::cluster& bot)
 {
 }
 
+PingController::~PingController()
+{
+}
+
 void PingController::onInit()
 {
     m_Bot.log(dpp::ll_info, "PingController initialized");

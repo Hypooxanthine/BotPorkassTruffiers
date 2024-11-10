@@ -1,6 +1,8 @@
-#include <dpp/dpp.h>
 #include <iostream>
 #include <filesystem>
+#include <vector>
+
+#include <dpp/dpp.h>
 
 #include "Commands.h"
 #include "Controllers/TimerController.h"
@@ -20,28 +22,30 @@ int main()
     /* Setup the bot */
     dpp::cluster bot(GetBotToken());
 
-    TimerController timerController(bot);
-    PingController pingController(bot);
+    std::vector<std::unique_ptr<Controller>> controllers;
+    controllers.push_back(std::make_unique<PingController>(bot));
+    controllers.push_back(std::make_unique<TimerController>(bot));
     
     bot.on_log(dpp::utility::cout_logger());
     
     /* The event is fired when someone issues your commands */
-    bot.on_slashcommand([&bot, &timerController, &pingController](const dpp::slashcommand_t& event) {
-        
-        if (pingController.handleSlashCommand(event))
-            return;
-        else if (timerController.handleSlashCommand(event))
-            return;
-        else
-            event.reply(dpp::message("Unknown command").set_flags(dpp::m_ephemeral));
+    bot.on_slashcommand([&bot, &controllers](const dpp::slashcommand_t& event) {
+
+        for (const auto& controller : controllers)
+        {
+            if (controller->handleSlashCommand(event))
+                return;
+        }
+
+        event.reply(dpp::message("Unknown command").set_flags(dpp::m_ephemeral));
     });
     
-    bot.on_ready([&bot, &timerController, &pingController](const dpp::ready_t& event) {
+    bot.on_ready([&bot, &controllers](const dpp::ready_t& event) {
 
         if (dpp::run_once<struct init_controllers>())
         {
-            timerController.init();
-            pingController.init();
+            for (const auto& controller : controllers)
+                controller->init();
         }
 
         if (dpp::run_once<struct clear_bot_commands>())
@@ -49,8 +53,8 @@ int main()
 
         if (dpp::run_once<struct register_bot_commands>())
         {
-            pingController.createCommands();
-            timerController.createCommands();
+            for (const auto& controller : controllers)
+                controller->createCommands();
         }
     });
     
@@ -58,11 +62,10 @@ int main()
     {
         bot.start(dpp::st_wait);
     }
-    catch(const dpp::invalid_token_exception& e)
+    catch(...)
     {
-        std::cerr << e.what() << '\n';
         std::cerr << "Please check your bot_token.txt file" << std::endl;
-        return 1;
+        throw;
     }
     
     return 0;
