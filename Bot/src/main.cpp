@@ -7,20 +7,26 @@
     
 int main()
 {
-    std::filesystem::path keysPath("data/keys");
+    auto keysPath = std::filesystem::path("data") / "keys";
     std::ifstream file(keysPath / "bot_token.txt");
     std::string botToken;
     if (file.is_open())
     {
         std::getline(file, botToken);
         file.close();
+
+        if (botToken.empty())
+        {
+            std::cerr << "Please insert your bot token in file " << (keysPath / "bot_token.txt").string() << std::endl;
+            return 1;
+        }
     }
     else
     {
         std::cerr << "Could not open bot_token.txt." << std::endl;
         std::filesystem::create_directories(keysPath);
         std::ofstream newFile(keysPath / "bot_token.txt");
-        std::cerr << "File " + (keysPath / "bot_token.txt").string() + " created. Please insert your bot token." << std::endl;
+        std::cerr << "File " << (keysPath / "bot_token.txt").string() << " created. Please insert your bot token." << std::endl;
         return 1;
     }
 
