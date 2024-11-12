@@ -46,15 +46,22 @@ int main()
         {
             for (const auto& controller : controllers)
                 controller->init();
+
+            bot.log(dpp::ll_info, "Controllers initialized");
         }
 
         if (dpp::run_once<struct clear_bot_commands>())
+        {
             bot.global_bulk_command_delete();
+            bot.log(dpp::ll_info, "Commands cleared");
+        }
 
         if (dpp::run_once<struct register_bot_commands>())
         {
             for (const auto& controller : controllers)
                 controller->createCommands();
+
+            bot.log(dpp::ll_info, "Commands registered");
         }
     });
     

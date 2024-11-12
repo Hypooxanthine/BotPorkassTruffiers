@@ -17,8 +17,6 @@ void PingController::onInit()
 void PingController::onCreateCommands() const
 {
     m_Bot.global_command_create(dpp::slashcommand("ping", "Ping the bot", m_Bot.me.id));
-    
-    m_Bot.log(dpp::ll_info, "Commands created");
 }
 
 bool PingController::onSlashCommand(const dpp::slashcommand_t& event)

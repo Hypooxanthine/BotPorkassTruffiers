@@ -25,31 +25,39 @@ void TimerController::onInit()
 
 void TimerController::onCreateCommands() const
 {
-    dpp::slashcommand set_timer("set_timer", "Set a timer", m_Bot.me.id);
-        set_timer.add_option(dpp::command_option(dpp::co_string, "name", "Timer name. Must be unique.", true));
-        set_timer.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
-        set_timer.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", true));
-        set_timer.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", true));
-        set_timer.add_option(dpp::command_option(dpp::co_string, "title", "Title of the timer.", false));
-        set_timer.add_option(dpp::command_option(dpp::co_string, "start", "Start time of the timer in dd/mm/yy hh:mm:ss format. Default: now.", false));
-        set_timer.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: this channel.", false));
-        set_timer.add_option(dpp::command_option(dpp::co_string, "image", "Image to send with the message.", false));
-    m_Bot.global_command_create(set_timer);
+    dpp::slashcommand timer("timer", "Timer commands", m_Bot.me.id);
 
-    m_Bot.global_command_create(dpp::slashcommand("list_timers", "List running timers.", m_Bot.me.id));
-    dpp::slashcommand stop_timer("stop_timer", "Stop a running timer.", m_Bot.me.id);
-        stop_timer.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
-    m_Bot.global_command_create(stop_timer);
+    dpp::command_option timer_set(dpp::co_sub_command, "set", "Set a timer");
+        timer_set.add_option(dpp::command_option(dpp::co_string, "name", "Timer name. Must be unique.", true));
+        timer_set.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
+        timer_set.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", true));
+        timer_set.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", true));
+        timer_set.add_option(dpp::command_option(dpp::co_string, "title", "Title of the timer.", false));
+        timer_set.add_option(dpp::command_option(dpp::co_string, "start", "Start time of the timer in dd/mm/yy hh:mm:ss format. Default: now.", false));
+        timer_set.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: this channel.", false));
+        timer_set.add_option(dpp::command_option(dpp::co_string, "image", "Image to send with the message.", false));
 
-    m_Bot.log(dpp::ll_info, "Commands created");
+    dpp::command_option timer_list(dpp::co_sub_command, "list", "List running timers.");
+    dpp::command_option timer_stop(dpp::co_sub_command, "stop", "Stop a running timer.");
+        timer_stop.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
+
+    timer.add_option(timer_list);
+    timer.add_option(timer_set);
+    timer.add_option(timer_stop);
+
+    m_Bot.global_command_create(timer);
 }
 
 bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
 {
-    bool handled = true;
+    if (event.command.get_command_name() != "timer")
+        return false;
+        
+    auto commandName = event.command.get_command_interaction().options[0].name;
+
     using namespace std::string_literals;
 
-    if (event.command.get_command_name() == "set_timer")
+    if (commandName == "set")
     {
         dpp::snowflake channel;
         std::visit(
@@ -111,7 +119,7 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
         catch (const std::exception& e)
         {
             event.reply(dpp::message("Error: "s + e.what()).set_flags(dpp::m_ephemeral));
-            return handled;
+            return true;
         }
 
         std::string name = std::get<std::string>(event.get_parameter("name"));
@@ -135,7 +143,7 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
         catch (const std::exception& e)
         {
             event.reply(dpp::message("Error: "s + e.what()).set_flags(dpp::m_ephemeral));
-            return handled;
+            return true;
         }
 
         m_Bot.log(dpp::ll_info, "Timer started with message \"" + message + "\".");
@@ -151,7 +159,7 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
 
         event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
     }
-    else if (event.command.get_command_name() == "list_timers")
+    else if (commandName == "list")
     {
         std::string msg = "Running timers:\n";
         for (const auto& [name, timer] : getTimers())
@@ -165,7 +173,7 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
 
         event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
     }
-    else if (event.command.get_command_name() == "stop_timer")
+    else if (commandName == "stop")
     {
         std::string name = std::get<std::string>(event.get_parameter("name"));
 
@@ -175,16 +183,19 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
         }
         catch (const std::exception& e)
         {
-            event.reply(dpp::message("Error: "s + e.what()).set_flags(dpp::m_ephemeral));
-            return handled;
+            event.reply(dpp::message("Error: Could not delete timer with name: " + name + ".").set_flags(dpp::m_ephemeral));
+            return true;
         }
 
         event.reply(dpp::message("Timer with name \"" + name + "\" stopped.").set_flags(dpp::m_ephemeral));
     }
     else
-        handled = false;
+    {
+        m_Bot.log(dpp::ll_warning, "Unknown timer command: " + commandName);
+        return true;
+    }
 
-    return handled;
+    return true;
 }
 
 void TimerController::startTimer(const TimerDTO& timer)
