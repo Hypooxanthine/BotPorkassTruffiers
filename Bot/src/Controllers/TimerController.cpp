@@ -41,8 +41,12 @@ void TimerController::onCreateCommands() const
     dpp::command_option timer_stop(dpp::co_sub_command, "stop", "Stop a running timer.");
         timer_stop.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to stop.", true));
 
+    dpp::command_option timer_trigger(dpp::co_sub_command, "trigger", "Trigger a timer.");
+        timer_trigger.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to trigger.", true));
+
     timer.add_option(timer_list);
     timer.add_option(timer_set);
+    timer.add_option(timer_trigger);
     timer.add_option(timer_stop);
 
     m_Bot.global_command_create(timer);
@@ -188,6 +192,22 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
         }
 
         event.reply(dpp::message("Timer with name \"" + name + "\" stopped.").set_flags(dpp::m_ephemeral));
+    }
+    else if (commandName == "trigger")
+    {
+        std::string name = std::get<std::string>(event.get_parameter("name"));
+
+        try
+        {
+            sendMessage(name);
+        }
+        catch (const std::exception& e)
+        {
+            event.reply(dpp::message("Error: Could not trigger timer with name: " + name + ".").set_flags(dpp::m_ephemeral));
+            return true;
+        }
+
+        event.reply(dpp::message("Timer with name \"" + name + "\" triggered.").set_flags(dpp::m_ephemeral));
     }
     else
     {
