@@ -97,7 +97,8 @@ private:
 
     void loadTimers();
     void startTimer_NoRegister(const std::string& timerId);
-    void sendMessage(const std::string& timerId);
+    void sendMessage(const std::string& timerId, const dpp::snowflake& channel) const;
+    void sendMessage(const std::string& timerId) const;
 
 private:
     TimerDAO m_TimerDAO;

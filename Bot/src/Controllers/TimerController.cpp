@@ -43,6 +43,7 @@ void TimerController::onCreateCommands() const
 
     dpp::command_option timer_trigger(dpp::co_sub_command, "trigger", "Trigger a timer.");
         timer_trigger.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to trigger.", true));
+        timer_trigger.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: set timer channel.", false));
 
     timer.add_option(timer_list);
     timer.add_option(timer_set);
@@ -160,10 +161,11 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
     else if (commandName == "trigger")
     {
         std::string name = getParam<std::string>(event, "name");
+        dpp::snowflake channel = getParamOr(event, "channel", event.command.channel_id);
 
         try
         {
-            sendMessage(name);
+            sendMessage(name, channel);
         }
         catch (...)
         {
@@ -278,7 +280,7 @@ void TimerController::startTimer_NoRegister(const std::string& timerId)
     }, secondsToNextInterval);
 }
 
-void TimerController::sendMessage(const std::string& timerId)
+void TimerController::sendMessage(const std::string& timerId, const dpp::snowflake& channel) const
 {
     Timer timer(m_TimerDAO.findOne(timerId));
 
@@ -296,8 +298,14 @@ void TimerController::sendMessage(const std::string& timerId)
     if (!timer.getData().getImageURL().empty())
         embed.set_image(timer.getData().getImageURL());
 
-    m_Bot.message_create(dpp::message(timer.getData().getChannel(), embed));
+    m_Bot.message_create(dpp::message(channel, embed));
     m_Bot.log(dpp::ll_info, "Timer \"" + timerId + "\" triggered");
+}
+
+void TimerController::sendMessage(const std::string& timerId) const
+{
+    Timer timer(m_TimerDAO.findOne(timerId));
+    sendMessage(timerId, timer.getData().getChannel());
 }
 
 bool TimerController::IsDatePassed(const TimePoint_Type& time)
