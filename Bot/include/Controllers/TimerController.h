@@ -16,8 +16,21 @@ public:
     TimerController(dpp::cluster& bot);
 
     ~TimerController();
+    
+    static bool IsDatePassed(const TimePoint_Type& time);
+    static std::string GetFormattedTime(const TimePoint_Type& time);
 
-private:
+    /**
+     * @brief Parse a time string in the format "dd/mm/yy hh:mm:ss".
+     * 
+     * @param time The time string.
+     * @return TimePoint_Type The parsed time.
+     * 
+     * @throw ParsingException if the time string is invalid.
+     */
+    static TimePoint_Type ParseTime(const std::string& time);
+    
+public:
 
     /**
      * @brief Timer nested class responsible for handling the timer logic.
@@ -34,22 +47,11 @@ private:
         int64_t getSecondsToNextInterval() const;
         std::string parseString(const std::string& str) const;
 
+        friend std::ostream& operator<<(std::ostream& os, const Timer& timer);
+
     private:
         const TimerDTO& m_TimerDTO;
     };
-    
-    static bool IsDatePassed(const TimePoint_Type& time);
-    static std::string GetFormattedTime(const TimePoint_Type& time);
-
-    /**
-     * @brief Parse a time string in the format "dd/mm/yy hh:mm:ss".
-     * 
-     * @param time The time string.
-     * @return TimePoint_Type The parsed time.
-     * 
-     * @throw ParsingException if the time string is invalid.
-     */
-    static TimePoint_Type ParseTime(const std::string& time);
 
 private:
 
@@ -101,3 +103,8 @@ private:
     TimerDAO m_TimerDAO;
     std::unordered_map<std::string, dpp::timer> m_RunningDppTimers;
 };
+
+namespace std
+{
+    std::string to_string(const TimerController::Timer& timer);
+}

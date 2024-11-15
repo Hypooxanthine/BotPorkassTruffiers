@@ -31,6 +31,51 @@ protected:
 
     virtual bool onSlashCommand(const dpp::slashcommand_t& event) = 0;
 
+    template <typename T>
+    T getParam(const dpp::slashcommand_t& event, const std::string& name) const
+    {
+        return std::get<T>(event.get_parameter(name));
+    }
+
+    template <typename T>
+    T getParamOr(const dpp::slashcommand_t& event, const std::string& name, const T& defaultValue) const
+    {
+        T value;
+
+        std::visit(
+            [&value, &defaultValue](auto&& arg) {
+                using Arg = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, Arg>)
+                    value = arg;
+                else
+                    value = defaultValue;
+            },
+            event.get_parameter(name)
+        );
+
+        return value;
+    }
+
+    template <typename C>
+    std::invoke_result_t<C> getParamOrCall(const dpp::slashcommand_t& event, const std::string& name, const C& function) const
+    {
+        using T = std::invoke_result_t<C>;
+        T value;
+
+        std::visit(
+            [&value, &function](auto&& arg) {
+                using Arg = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, Arg>)
+                    value = arg;
+                else
+                    value = function();
+            },
+            event.get_parameter(name)
+        );
+
+        return value;
+    }
+
 protected:
     dpp::cluster& m_Bot;
 };

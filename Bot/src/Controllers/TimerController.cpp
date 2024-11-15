@@ -63,72 +63,44 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
 
     if (commandName == "set")
     {
-        dpp::snowflake channel;
-        std::visit(
-            [&channel, &event](auto&& arg) {
-                using T = std::decay_t<decltype(arg)>;
-                if constexpr (std::is_same_v<T, dpp::snowflake>)
-                    channel = arg;
-                if constexpr (std::is_same_v<T, std::monostate>)
-                    channel = event.command.channel_id;
-            },
-            event.get_parameter("channel")
-        );
-
-        std::string image = "";
-        std::visit(
-            [&image, &event](auto&& arg) {
-                using T = std::decay_t<decltype(arg)>;
-                if constexpr (std::is_same_v<T, std::string>)
-                    image = arg;
-            },
-            event.get_parameter("image")
-        );
-
-        std::string title = "";
-        std::visit(
-            [&title, &event](auto&& arg) {
-                using T = std::decay_t<decltype(arg)>;
-                if constexpr (std::is_same_v<T, std::string>)
-                    title = arg;
-            },
-            event.get_parameter("title")
-        );
-
-        std::string startStr = "", endStr = std::get<std::string>(event.get_parameter("end"));
-        TimerDTO::TimePoint_Type startTime, endTime;
-        
-        std::visit(
-            [&startStr](auto&& arg) {
-
-                using T = std::decay_t<decltype(arg)>;
-                if constexpr (std::is_same_v<T, std::string>)
-                    startStr = arg;
-            },
-            event.get_parameter("start")
+        TimerDTO::TimePoint_Type startTime;
+        std::string startStr = getParamOrCall(
+            event,
+            "start",
+            []() { 
+                return GetFormattedTime(std::chrono::system_clock::now());
+            }
         );
 
         try
         {
-            if (!startStr.empty())
-                startTime = TimerController::ParseTime(startStr);
-            else
-            {
-                startTime = std::chrono::system_clock::now();
-                startStr = TimerController::GetFormattedTime(startTime);
-            }
-
-            endTime = TimerController::ParseTime(endStr);
+            startTime = TimerController::ParseTime(startStr);
         }
-        catch (const std::exception& e)
+        catch(...)
         {
-            event.reply(dpp::message("Error: "s + e.what()).set_flags(dpp::m_ephemeral));
+            event.reply(dpp::message("Error: Could not parse start time: " + startStr).set_flags(dpp::m_ephemeral));
             return true;
         }
 
-        std::string name = std::get<std::string>(event.get_parameter("name"));
-        int64_t interval = std::get<int64_t>(event.get_parameter("interval"));
-        std::string message = std::get<std::string>(event.get_parameter("message"));
+        TimerDTO::TimePoint_Type endTime;
+        std::string endStr = getParam<std::string>(event, "end");
+
+        try
+        {
+            endTime = TimerController::ParseTime(endStr);
+        }
+        catch (...)
+        {
+            event.reply(dpp::message("Error: Could not parse end time: " + endStr).set_flags(dpp::m_ephemeral));
+            return true;
+        }
+
+        std::string name = getParam<std::string>(event, "name");
+        int64_t interval = getParam<int64_t>(event, "interval");
+        std::string message = getParam<std::string>(event, "message");
+        dpp::snowflake channel = getParamOr(event, "channel", event.command.channel_id);
+        std::string image = getParamOr(event, "image", ""s);
+        std::string title = getParamOr(event, "title", ""s);
 
         TimerDTO t;
         t.setName(name);
@@ -151,41 +123,33 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
         }
 
         m_Bot.log(dpp::ll_info, "Timer started with message \"" + message + "\".");
-
-        std::string msg = "Started timer \"" + name + "\" with message \"" + message + "\n";
-        if (!title.empty())
-            msg += "\tTitle: " + title + '\n';
-        msg += "\tStart: " + startStr + '\n';
-        msg += "\tEnd: " + endStr + '\n';
-        msg += "\tInterval: " + std::to_string(interval) + " seconds.";
-        if (!image.empty())
-            msg += "\n\tImage: " + image;
-
-        event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
+        event.reply(dpp::message("Timer started:\n" + std::to_string(Timer(t))).set_flags(dpp::m_ephemeral));
     }
     else if (commandName == "list")
     {
-        std::string msg = "Running timers:\n";
-        for (const auto& [name, timer] : getTimers())
+        if (getTimers().empty())
+            event.reply(dpp::message("No running timers.").set_flags(dpp::m_ephemeral));
+        else
         {
-            msg += "- " + name + "\n"
-                "\tStart: " + TimerController::GetFormattedTime(timer.getStart()) + "\n"
-                "\tEnd: " + TimerController::GetFormattedTime(timer.getEnd()) + "\n"
-                "\tInterval: " + std::to_string(timer.getInterval()) + " seconds\n"
-                "\tMessage: " + timer.getMessage() + "\n";
-        }
+            std::string msg = "Running timers:\n";
+            for (const auto& [i, pair] : std::views::enumerate(getTimers()))
+            {
+                const auto& [_, timerDTO] = pair;
+                msg += "Timer " + std::to_string(i) + "\n" + std::to_string(Timer(timerDTO)) + '\n';
+            }
 
-        event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
+            event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
+        }
     }
     else if (commandName == "stop")
     {
-        std::string name = std::get<std::string>(event.get_parameter("name"));
+        std::string name = getParam<std::string>(event, "name");
 
         try
         {
             stopTimer(name);
         }
-        catch (const std::exception& e)
+        catch (...)
         {
             event.reply(dpp::message("Error: Could not delete timer with name: " + name + ".").set_flags(dpp::m_ephemeral));
             return true;
@@ -195,13 +159,13 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
     }
     else if (commandName == "trigger")
     {
-        std::string name = std::get<std::string>(event.get_parameter("name"));
+        std::string name = getParam<std::string>(event, "name");
 
         try
         {
             sendMessage(name);
         }
-        catch (const std::exception& e)
+        catch (...)
         {
             event.reply(dpp::message("Error: Could not trigger timer with name: " + name + ".").set_flags(dpp::m_ephemeral));
             return true;
@@ -440,4 +404,31 @@ std::string TimerController::Timer::parseString(const std::string& str) const
     }
 
     return parsedMessage;
+}
+
+std::ostream& operator<<(std::ostream& os, const TimerController::Timer& timer)
+{
+    const auto& dto = timer.getData();
+    os  << "\tName: " << dto.getName() << '\n'
+        << "\tStart: " << TimerController::GetFormattedTime(dto.getStart()) << '\n'
+        << "\tEnd: " << TimerController::GetFormattedTime(dto.getEnd()) << '\n'
+        << "\tInterval: " << dto.getInterval() << " seconds\n";
+
+    if (!dto.getTitle().empty())
+        os << "\tTitle: " << dto.getTitle() << '\n';
+
+    os  << "\tMessage: " << dto.getMessage() << '\n'
+        << "\tChannel: " << dto.getChannel() << '\n';
+    
+    if (!dto.getImageURL().empty())
+        os << "\tImage: " << dto.getImageURL() << '\n';
+
+    return os;
+}
+
+std::string std::to_string(const TimerController::Timer& timer)
+{
+    std::stringstream ss;
+    ss << timer;
+    return ss.str();
 }
