@@ -71,7 +71,7 @@ int main()
     }
     catch(...)
     {
-        std::cerr << "Please check your bot_token.txt file" << std::endl;
+        std::cerr << "Invalid token. Please check bot_token.txt" << std::endl;
         throw;
     }
     
