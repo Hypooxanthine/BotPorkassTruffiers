@@ -112,6 +112,19 @@ private:
     void stopTimer(const std::string& id);
 
     /**
+     * @brief Update a timer.
+     * 
+     * @param id The id of the timer to update.
+     * @param timer The new timer data.
+     * 
+     * @throw DAOBadID if the timer name is invalid.
+     * @throw DAOIDNotFound if there is no timer with the given name.
+     * @throw DAOOutputStreamException if there is an error writing to the output stream.
+     * @throw PastDateException if the end date is in the past.
+     */    
+    void updateTimer(const std::string& id, const TimerDTO& timer);
+
+    /**
      * @brief Get all timers.
      * 
      * @return const TimerDAO::Map_Type& The timers.

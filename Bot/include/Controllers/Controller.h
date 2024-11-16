@@ -31,6 +31,11 @@ protected:
 
     virtual bool onSlashCommand(const dpp::slashcommand_t& event) = 0;
 
+    bool isParamDefined(const dpp::slashcommand_t& event, const std::string& name) const
+    {
+        return !std::holds_alternative<std::monostate>(event.get_parameter(name));
+    }
+
     template <typename T>
     T getParam(const dpp::slashcommand_t& event, const std::string& name) const
     {

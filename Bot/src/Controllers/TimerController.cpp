@@ -45,8 +45,19 @@ void TimerController::onCreateCommands() const
         timer_trigger.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to trigger.", true));
         timer_trigger.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: set timer channel.", false));
 
+    dpp::command_option timer_update(dpp::co_sub_command, "update", "Update a timer.");
+        timer_update.add_option(dpp::command_option(dpp::co_string, "name", "Name of the timer to update.", true));
+        timer_update.add_option(dpp::command_option(dpp::co_string, "interval", "Interval between each message in format \"0d 0h 0m 0s\". Example: \"1d 2h 3m 4s\".", false));
+        timer_update.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", false));
+        timer_update.add_option(dpp::command_option(dpp::co_string, "start", "Start time of the timer in dd/mm/yy hh:mm:ss format. Default: now.", false));
+        timer_update.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", false));
+        timer_update.add_option(dpp::command_option(dpp::co_string, "title", "Title of the timer.", false));
+        timer_update.add_option(dpp::command_option(dpp::co_channel, "channel", "Channel to send the message to. Default: set timer channel.", false));
+        timer_update.add_option(dpp::command_option(dpp::co_string, "image", "Image to send with the message.", false));
+
     timer.add_option(timer_list);
     timer.add_option(timer_set);
+    timer.add_option(timer_update);
     timer.add_option(timer_trigger);
     timer.add_option(timer_stop);
 
@@ -178,7 +189,10 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
 
         try
         {
-            sendMessage(name, channel);
+            if (isParamDefined(event, "channel"))
+                sendMessage(name, getParam<dpp::snowflake>(event, "channel"));
+            else
+                sendMessage(name);
         }
         catch (...)
         {
@@ -187,6 +201,92 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
         }
 
         event.reply(dpp::message("Timer with name \"" + name + "\" triggered.").set_flags(dpp::m_ephemeral));
+    }
+    else if (commandName == "update")
+    {
+        TimerDTO t;
+
+        std::string name = getParam<std::string>(event, "name");
+
+        try
+        {
+            t = m_TimerDAO.findOne(name);
+        }
+        catch (...)
+        {
+            event.reply(dpp::message("Error: Could not find timer with name: " + name).set_flags(dpp::m_ephemeral));
+            return true;
+        }
+
+        if (isParamDefined(event, "interval"))
+        {
+            std::string intervalStr = getParam<std::string>(event, "interval");
+
+            try
+            {
+                t.setInterval(TimerController::ParseInteval(intervalStr));
+            }
+            catch (...)
+            {
+                event.reply(dpp::message("Error: Could not parse interval: " + intervalStr).set_flags(dpp::m_ephemeral));
+                return true;
+            }
+        }
+        
+        if (isParamDefined(event, "message"))
+            t.setMessage(getParam<std::string>(event, "message"));
+
+        if (isParamDefined(event, "start"))
+        {
+            std::string startStr = getParam<std::string>(event, "start");
+
+            try
+            {
+                t.setStart(TimerController::ParseTime(startStr));
+            }
+            catch (...)
+            {
+                event.reply(dpp::message("Error: Could not parse start time: " + startStr).set_flags(dpp::m_ephemeral));
+                return true;
+            }
+        }
+
+        if (isParamDefined(event, "end"))
+        {
+            std::string endStr = getParam<std::string>(event, "end");
+
+            try
+            {
+                t.setEnd(TimerController::ParseTime(endStr));
+            }
+            catch (...)
+            {
+                event.reply(dpp::message("Error: Could not parse end time: " + endStr).set_flags(dpp::m_ephemeral));
+                return true;
+            }
+        }
+
+        if (isParamDefined(event, "title"))
+            t.setTitle(getParam<std::string>(event, "title"));
+
+        if (isParamDefined(event, "channel"))
+            t.setChannel(getParam<dpp::snowflake>(event, "channel"));
+
+        if (isParamDefined(event, "image"))
+            t.setImageURL(getParam<std::string>(event, "image"));
+
+        try
+        {
+            updateTimer(name, t);
+        }
+        catch (const std::exception& e)
+        {
+            event.reply(dpp::message("Error: "s + e.what()).set_flags(dpp::m_ephemeral));
+            return true;
+        }
+
+        m_Bot.log(dpp::ll_info, "Timer updated with message \"" + t.getMessage() + "\".");
+        event.reply(dpp::message("Timer updated:\n" + std::to_string(Timer(t))).set_flags(dpp::m_ephemeral));
     }
     else
     {
@@ -225,6 +325,25 @@ void TimerController::stopTimer(const std::string& id)
 
     m_RunningDppTimers.erase(id);
     m_Bot.log(dpp::ll_info, "Timer with id: " + id + " stopped.");
+}
+
+void TimerController::updateTimer(const std::string& id, const TimerDTO& timer)
+{
+    m_Bot.log(dpp::ll_info, "Updating timer with id: " + id);
+
+    try
+    {
+        m_TimerDAO.update(id, timer);
+    }
+    catch (const std::exception& e)
+    {
+        m_Bot.log(dpp::ll_warning, "Could not update timer with id: " + id + ". Error: " + e.what());
+        throw;
+    }
+
+    m_Bot.stop_timer(m_RunningDppTimers.at(id));
+
+    startTimer_NoRegister(id);
 }
 
 void TimerController::loadTimers()

@@ -29,7 +29,7 @@ public:
     inline const std::string& getTitle() const { return m_Title; }
 
     inline void setName(const std::string& name) { m_Name = name; }
-    inline void setChannel(dpp::snowflake channel) { m_Channel = channel; }
+    inline void setChannel(const dpp::snowflake& channel) { m_Channel = channel; }
     inline void setInterval(int64_t intervalSeconds) { m_IntervalSeconds = intervalSeconds; }
     inline void setMessage(const std::string& message) { m_Message = message; }
     inline void setStart(const TimePoint_Type& start) { m_Start = start; }
