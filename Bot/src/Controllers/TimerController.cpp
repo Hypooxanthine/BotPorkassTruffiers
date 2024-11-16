@@ -1,7 +1,5 @@
 #include "Controllers/TimerController.h"
 
-#include <ranges>
-
 static bool INSTANTIATED = false;
 
 TimerController::TimerController(dpp::cluster& bot)
@@ -147,10 +145,11 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
         else
         {
             std::string msg = "Running timers:\n";
-            for (const auto& [i, pair] : std::views::enumerate(getTimers()))
+            size_t i = 0;
+            for (const auto& [_, timerDTO] : getTimers())
             {
-                const auto& [_, timerDTO] = pair;
                 msg += "Timer " + std::to_string(i) + "\n" + std::to_string(Timer(timerDTO)) + '\n';
+                ++i;
             }
 
             event.reply(dpp::message(msg).set_flags(dpp::m_ephemeral));
