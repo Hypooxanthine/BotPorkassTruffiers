@@ -1,5 +1,7 @@
 #include "Controllers/TimerController.h"
 
+#include <ranges>
+
 static bool INSTANTIATED = false;
 
 TimerController::TimerController(dpp::cluster& bot)
