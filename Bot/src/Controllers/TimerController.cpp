@@ -29,7 +29,7 @@ void TimerController::onCreateCommands() const
 
     dpp::command_option timer_set(dpp::co_sub_command, "set", "Set a timer");
         timer_set.add_option(dpp::command_option(dpp::co_string, "name", "Timer name. Must be unique.", true));
-        timer_set.add_option(dpp::command_option(dpp::co_integer, "interval", "Interval in seconds between each message.", true));
+        timer_set.add_option(dpp::command_option(dpp::co_string, "interval", "Interval between each message in format \"0d 0h 0m 0s\". Example: \"1d 2h 3m 4s\".", true));
         timer_set.add_option(dpp::command_option(dpp::co_string, "message", "Message to send.", true));
         timer_set.add_option(dpp::command_option(dpp::co_string, "end", "End time of the timer in dd/mm/yy hh:mm:ss format.", true));
         timer_set.add_option(dpp::command_option(dpp::co_string, "title", "Title of the timer.", false));
@@ -96,8 +96,20 @@ bool TimerController::onSlashCommand(const dpp::slashcommand_t& event)
             return true;
         }
 
+        std::string intervalStr = getParam<std::string>(event, "interval");
+        uint64_t interval;
+
+        try
+        {
+            interval = TimerController::ParseInteval(intervalStr);
+        }
+        catch (...)
+        {
+            event.reply(dpp::message("Error: Could not parse interval: " + intervalStr).set_flags(dpp::m_ephemeral));
+            return true;
+        }
+
         std::string name = getParam<std::string>(event, "name");
-        int64_t interval = getParam<int64_t>(event, "interval");
         std::string message = getParam<std::string>(event, "message");
         dpp::snowflake channel = getParamOr(event, "channel", event.command.channel_id);
         std::string image = getParamOr(event, "image", ""s);
@@ -352,6 +364,50 @@ TimerController::TimePoint_Type TimerController::ParseTime(const std::string& ti
         throw ParsingException("Could not parse time: " + time);
 
     return tp;
+}
+
+int64_t TimerController::ParseInteval(const std::string& interval)
+{
+    // Luckily, s, m, h and d are in descending order
+    static std::map<std::string, int64_t, std::less<std::string>> multipliers = {
+        {"d", 60 * 60 * 24},
+        {"h", 60 * 60},
+        {"m", 60},
+        {"s", 1},
+    };
+
+    std::stringstream ss(interval);
+    int64_t total = 0;
+    auto nextPossible = multipliers.begin();
+
+    while (!ss.eof() && nextPossible != multipliers.end())
+    {
+        int64_t value;
+        std::string unit;
+
+        ss >> value >> unit;
+        
+        if (ss.fail())
+            throw ParsingException("Invalid interval format (could not parse value): " + interval);
+
+        auto it = multipliers.find(unit);
+
+        if (it == multipliers.end())
+            throw ParsingException("Invalid interval unit: " + unit);
+
+        if (it->second > nextPossible->second)
+            throw ParsingException("Invalid interval format (not in descending order): " + interval);
+
+        total += value * it->second;
+
+        nextPossible = it;
+        ++nextPossible;
+    }
+
+    if (!ss.eof())
+        throw ParsingException("Invalid interval format (too many units): " + interval);
+
+    return total;
 }
 
 /* Timer nested class */

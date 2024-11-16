@@ -17,7 +17,20 @@ public:
 
     ~TimerController();
     
+    /**
+     * @brief Check if a date is in the past.
+     * 
+     * @param time The time to check.
+     * @return true if the date is in the past, false otherwise.
+     */
     static bool IsDatePassed(const TimePoint_Type& time);
+    
+    /**
+     * @brief Get a formatted time string in the format "dd/mm/yy hh:mm:ss".
+     * 
+     * @param time The time to format.
+     * @return std::string The formatted time.
+     */
     static std::string GetFormattedTime(const TimePoint_Type& time);
 
     /**
@@ -29,6 +42,16 @@ public:
      * @throw ParsingException if the time string is invalid.
      */
     static TimePoint_Type ParseTime(const std::string& time);
+
+    /**
+     * @brief Parse an interval string in the format "0d 0h 0m 0s". Example: "1d 2h 3m 4s", "1d 2h", "1d", "2h 4s".
+     * 
+     * @param interval The interval string.
+     * @return int64_t The parsed interval in seconds.
+     * 
+     * @throw ParsingException if the interval string is invalid.
+     */
+    static int64_t ParseInteval(const std::string& interval);
     
 public:
 
